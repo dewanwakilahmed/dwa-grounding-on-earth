@@ -39,7 +39,6 @@ const TimeTracker: React.FC = () => {
 
     // Convert to 12-hour format
     const hour12 = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
-    const ampm = hour >= 12 ? "PM" : "AM";
 
     const totalSecondsInDay = 24 * 60 * 60;
     const currentSecondsInDay =
