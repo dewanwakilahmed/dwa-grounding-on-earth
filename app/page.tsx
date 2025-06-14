@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect, useMemo } from "react";
-import { Clock, Calendar, Timer, User, Globe, TrendingUp } from "lucide-react";
+import { Clock, Calendar, Timer, User, Globe } from "lucide-react";
 
 interface TimeData {
   hour: number;
@@ -166,6 +166,7 @@ const TimeTracker: React.FC = () => {
         />
       </div>
     ));
+  ProgressBar.displayName = "ProgressBar";
 
   const TimeCard: React.FC<{
     icon: React.ReactNode;
@@ -194,6 +195,7 @@ const TimeTracker: React.FC = () => {
       </div>
     </div>
   ));
+  TimeCard.displayName = "TimeCard";
 
   const StatCard: React.FC<{ label: string; value: string }> = React.memo(
     ({ label, value }) => (
@@ -203,6 +205,7 @@ const TimeTracker: React.FC = () => {
       </div>
     )
   );
+  StatCard.displayName = "StatCard";
 
   if (!timeData) {
     return (
