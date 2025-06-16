@@ -187,9 +187,14 @@ const TimeTracker: React.FC = () => {
       <div className="space-y-3">
         <div className="flex justify-between items-end">
           <span className="text-2xl font-bold text-white">{value}</span>
-          <span className="text-lg font-medium text-gray-300">
-            {percentage.toFixed(2)}%
-          </span>
+          <div className="text-right">
+            <span className="text-lg font-medium text-gray-300">
+              {percentage.toFixed(2)}%
+            </span>
+            <p className="text-sm text-gray-400">
+              {(100 - percentage).toFixed(2)}% remaining
+            </p>
+          </div>
         </div>
         <ProgressBar percentage={percentage} color={color} />
       </div>
