@@ -263,12 +263,12 @@ const TimeTracker: React.FC = () => {
       <div className="max-w-6xl mx-auto p-6">
         {/* Header */}
         <div className="text-center mb-10">
-          <div className="flex items-center justify-center gap-3 mb-4">
+          {/* <div className="flex items-center justify-center gap-3 mb-4">
             <Globe className="w-8 h-8 text-blue-400" />
             <h1 className="text-4xl font-bold text-white">
               GROUNDING ON EARTH
             </h1>
-          </div>
+          </div> */}
           <div className="bg-gray-900 rounded-lg p-4 border border-gray-700 inline-block">
             <p className="text-xl text-gray-200 font-medium">
               {timeData.currentTime}
