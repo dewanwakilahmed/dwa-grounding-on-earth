@@ -53,7 +53,7 @@ const TimeTracker: React.FC = () => {
 
     // Calculate total minutes and seconds from start of day
     const totalMinutesInDay = hour * 60 + minute;
-    const totalSecondsInDay = totalMinutesInDay * 60 + seconds;
+    // const totalSecondsInDay = totalMinutesInDay * 60 + seconds;
 
     // 3-hour time block calculations (8 blocks per day)
     const minutesIn3Hr = 180;
