@@ -18,6 +18,7 @@ interface TimeData {
   dayPercentage: number;
   dayOfWeek: number;
   weekPercentage: number;
+  monthPercentage: number;
   quarter: number;
   quarterPercentage: number;
   yearPercentage: number;
@@ -26,10 +27,8 @@ interface TimeData {
   lifePercentage: number;
   currentTime: string;
   currentDate: string;
-  session45MinPercentage: number;
-  currentSession: number;
-  phase90MinPercentage: number;
-  currentPhase: number;
+  hourSessionPercentage: number;
+  currentHourSession: number;
   timeBlock3HrPercentage: number;
   currentTimeBlock: number;
 }
@@ -53,7 +52,6 @@ const TimeTracker: React.FC = () => {
 
     // Calculate total minutes and seconds from start of day
     const totalMinutesInDay = hour * 60 + minute;
-    // const totalSecondsInDay = totalMinutesInDay * 60 + seconds;
 
     // 3-hour time block calculations (8 blocks per day)
     const minutesIn3Hr = 180;
@@ -63,21 +61,14 @@ const TimeTracker: React.FC = () => {
     const timeBlock3HrPercentage =
       (secondsIntoTimeBlock / (minutesIn3Hr * 60)) * 100;
 
-    // 90-minute phase calculations (2 phases per 3-hour block)
-    const minutesIn90Min = 90;
-    const currentPhase = Math.floor(minutesIntoTimeBlock / minutesIn90Min) + 1;
-    const minutesIntoPhase = minutesIntoTimeBlock % minutesIn90Min;
-    const secondsIntoPhase = minutesIntoPhase * 60 + seconds;
-    const phase90MinPercentage =
-      (secondsIntoPhase / (minutesIn90Min * 60)) * 100;
-
-    // 45-minute session calculations (2 sessions per 90-minute phase)
-    const minutesIn45Min = 45;
-    const currentSession = Math.floor(minutesIntoPhase / minutesIn45Min) + 1;
-    const minutesIntoSession = minutesIntoPhase % minutesIn45Min;
-    const secondsIntoSession = minutesIntoSession * 60 + seconds;
-    const session45MinPercentage =
-      (secondsIntoSession / (minutesIn45Min * 60)) * 100;
+    // 1-hour session calculations (3 sessions per 3-hour block)
+    const minutesIn1Hr = 60;
+    const currentHourSession =
+      Math.floor(minutesIntoTimeBlock / minutesIn1Hr) + 1;
+    const minutesIntoHourSession = minutesIntoTimeBlock % minutesIn1Hr;
+    const secondsIntoHourSession = minutesIntoHourSession * 60 + seconds;
+    const hourSessionPercentage =
+      (secondsIntoHourSession / (minutesIn1Hr * 60)) * 100;
 
     // Continuous day percentage calculation
     const totalMillisecondsInDay = 24 * 60 * 60 * 1000;
@@ -97,6 +88,25 @@ const TimeTracker: React.FC = () => {
       dayOfWeek * 24 * 60 * 60 * 1000 + currentMillisecondsInDay;
     const weekPercentage =
       (currentMillisecondsInWeek / totalMillisecondsInWeek) * 100;
+
+    // Continuous month percentage calculation
+    const monthStart = new Date(
+      dhakaTime.getFullYear(),
+      dhakaTime.getMonth(),
+      1
+    );
+    const monthEnd = new Date(
+      dhakaTime.getFullYear(),
+      dhakaTime.getMonth() + 1,
+      0,
+      23,
+      59,
+      59,
+      999
+    );
+    const monthTotalMs = monthEnd.getTime() - monthStart.getTime();
+    const monthCurrentMs = dhakaTime.getTime() - monthStart.getTime();
+    const monthPercentage = (monthCurrentMs / monthTotalMs) * 100;
 
     // Continuous quarter percentage calculation
     const month = dhakaTime.getMonth();
@@ -153,6 +163,7 @@ const TimeTracker: React.FC = () => {
       dayPercentage,
       dayOfWeek,
       weekPercentage,
+      monthPercentage,
       quarter,
       quarterPercentage,
       yearPercentage,
@@ -170,10 +181,8 @@ const TimeTracker: React.FC = () => {
         month: "long",
         day: "numeric",
       }),
-      session45MinPercentage,
-      currentSession,
-      phase90MinPercentage,
-      currentPhase,
+      hourSessionPercentage,
+      currentHourSession,
       timeBlock3HrPercentage,
       currentTimeBlock,
     };
@@ -199,9 +208,18 @@ const TimeTracker: React.FC = () => {
       "Sunday",
     ];
     const quarterNames = ["Q1", "Q2", "Q3", "Q4"];
-    const sessionNames = ["1st Session", "2nd Session"];
-    const phaseNames = ["1st Phase", "2nd Phase"];
-    return { dayNames, quarterNames, sessionNames, phaseNames };
+    const hourSessionNames = ["1st Session", "2nd Session", "3rd Session"];
+    const timeBlockNames = [
+      "Late Night",
+      "Early Morning",
+      "Morning",
+      "Late Morning",
+      "Afternoon",
+      "Evening",
+      "Late Evening",
+      "Night",
+    ];
+    return { dayNames, quarterNames, hourSessionNames, timeBlockNames };
   }, []);
 
   const ProgressBar: React.FC<{ percentage: number; color: string }> =
@@ -275,7 +293,7 @@ const TimeTracker: React.FC = () => {
           font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
         }
       `}</style>
-      <div className="max-w-6xl mx-auto p-6">
+      <div className="max-w-7xl mx-auto p-6">
         {/* Header */}
         <div className="text-center mb-10">
           <div className="bg-gray-900 rounded-lg p-4 border border-gray-700 inline-block">
@@ -286,32 +304,25 @@ const TimeTracker: React.FC = () => {
           </div>
         </div>
 
-        {/* New Time Tracking Row - 45-min, 90-min, and 3-hour segments */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+        {/* All Time Cards Grid - 3 columns on desktop, 4 cards per row */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
+          {/* Row 1 */}
           <TimeCard
             icon={<Target className="w-6 h-6 text-white" />}
-            title="45-min Session"
+            title="Hour Timer"
             value={`${(
-              45 -
-              (timeData.session45MinPercentage / 100) * 45
+              60 -
+              (timeData.hourSessionPercentage / 100) * 60
             ).toFixed(2)} Mins`}
-            percentage={timeData.session45MinPercentage}
+            percentage={timeData.hourSessionPercentage}
             color="bg-teal-600"
-            subtitle={staticContent.sessionNames[timeData.currentSession - 1]}
-          />
-          <TimeCard
-            icon={<Activity className="w-6 h-6 text-white" />}
-            title="90-min Phase"
-            value={`${(90 - (timeData.phase90MinPercentage / 100) * 90).toFixed(
-              2
-            )} Mins`}
-            percentage={timeData.phase90MinPercentage}
-            color="bg-emerald-600"
-            subtitle={staticContent.phaseNames[timeData.currentPhase - 1]}
+            subtitle={
+              staticContent.hourSessionNames[timeData.currentHourSession - 1]
+            }
           />
           <TimeCard
             icon={<Timer className="w-6 h-6 text-white" />}
-            title="Time Block of Day"
+            title={staticContent.timeBlockNames[timeData.currentTimeBlock - 1]}
             value={`${(3 - (timeData.timeBlock3HrPercentage / 100) * 3).toFixed(
               2
             )} Hrs`}
@@ -319,10 +330,6 @@ const TimeTracker: React.FC = () => {
             color="bg-amber-600"
             subtitle={`Block ${timeData.currentTimeBlock} of 8`}
           />
-        </div>
-
-        {/* Time Cards Grid - Original cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
           <TimeCard
             icon={<Clock className="w-6 h-6 text-white" />}
             title="Hour of Day"
@@ -335,6 +342,8 @@ const TimeTracker: React.FC = () => {
             color="bg-blue-600"
             subtitle="24-hour format"
           />
+
+          {/* Row 2 */}
           <TimeCard
             icon={<Calendar className="w-6 h-6 text-white" />}
             title="Day of Week"
@@ -344,6 +353,17 @@ const TimeTracker: React.FC = () => {
             subtitle="Week progress"
           />
           <TimeCard
+            icon={<Activity className="w-6 h-6 text-white" />}
+            title="Month"
+            value={new Date().toLocaleString("en-US", {
+              month: "long",
+              timeZone: "Asia/Dhaka",
+            })}
+            percentage={timeData.monthPercentage}
+            color="bg-emerald-600"
+            subtitle="Month progress"
+          />
+          <TimeCard
             icon={<Timer className="w-6 h-6 text-white" />}
             title="Quarter"
             value={staticContent.quarterNames[timeData.quarter - 1]}
@@ -351,6 +371,8 @@ const TimeTracker: React.FC = () => {
             color="bg-purple-600"
             subtitle={new Date().getFullYear().toString()}
           />
+
+          {/* Row 3 */}
           <TimeCard
             icon={<Globe className="w-6 h-6 text-white" />}
             title="Year"
@@ -382,7 +404,7 @@ const TimeTracker: React.FC = () => {
           <h2 className="text-2xl font-bold text-white mb-6 text-center">
             Time Remaining
           </h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4">
             <StatCard
               label="Hours today"
               value={(24 - (timeData.dayPercentage / 100) * 24).toFixed(2)}
@@ -392,11 +414,27 @@ const TimeTracker: React.FC = () => {
               value={(7 - (timeData.weekPercentage / 100) * 7).toFixed(2)}
             />
             <StatCard
+              label="Days in month"
+              value={(
+                new Date(
+                  new Date().getFullYear(),
+                  new Date().getMonth() + 1,
+                  0
+                ).getDate() -
+                (timeData.monthPercentage / 100) *
+                  new Date(
+                    new Date().getFullYear(),
+                    new Date().getMonth() + 1,
+                    0
+                  ).getDate()
+              ).toFixed(2)}
+            />
+            <StatCard
               label="Weeks in quarter"
               value={(13 - (timeData.quarterPercentage / 100) * 13).toFixed(2)}
             />
             <StatCard
-              label="Quarters this year"
+              label="Qs this year"
               value={(4 - (timeData.yearPercentage / 100) * 4).toFixed(2)}
             />
             <StatCard
