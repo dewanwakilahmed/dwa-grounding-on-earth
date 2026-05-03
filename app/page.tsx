@@ -34,7 +34,7 @@ interface TimeData {
 }
 
 const BIRTH_DATE = new Date("1997-05-05");
-const LIFE_EXPECTANCY = 120;
+const LIFE_EXPECTANCY = 125;
 
 const TimeTracker: React.FC = () => {
   const [timeData, setTimeData] = useState<TimeData | null>(null);
@@ -42,7 +42,7 @@ const TimeTracker: React.FC = () => {
   const calculateTimeData = (): TimeData => {
     const now = new Date();
     const dhakaTime = new Date(
-      now.toLocaleString("en-US", { timeZone: "Asia/Dhaka" })
+      now.toLocaleString("en-US", { timeZone: "Asia/Dhaka" }),
     );
 
     const hour = dhakaTime.getHours();
@@ -93,7 +93,7 @@ const TimeTracker: React.FC = () => {
     const monthStart = new Date(
       dhakaTime.getFullYear(),
       dhakaTime.getMonth(),
-      1
+      1,
     );
     const monthEnd = new Date(
       dhakaTime.getFullYear(),
@@ -102,7 +102,7 @@ const TimeTracker: React.FC = () => {
       23,
       59,
       59,
-      999
+      999,
     );
     const monthTotalMs = monthEnd.getTime() - monthStart.getTime();
     const monthCurrentMs = dhakaTime.getTime() - monthStart.getTime();
@@ -115,7 +115,7 @@ const TimeTracker: React.FC = () => {
     const quarterStartDate = new Date(
       dhakaTime.getFullYear(),
       quarterStartMonth,
-      1
+      1,
     );
     const quarterEndDate = new Date(
       dhakaTime.getFullYear(),
@@ -124,7 +124,7 @@ const TimeTracker: React.FC = () => {
       23,
       59,
       59,
-      999
+      999,
     );
     const quarterTotalMs =
       quarterEndDate.getTime() - quarterStartDate.getTime();
@@ -145,7 +145,7 @@ const TimeTracker: React.FC = () => {
     const centuryCurrentMs = dhakaTime.getTime() - centuryStart.getTime();
     const centuryPercentage = Math.max(
       0,
-      (centuryCurrentMs / centuryTotalMs) * 100
+      (centuryCurrentMs / centuryTotalMs) * 100,
     );
 
     // Continuous age and life percentage calculation
@@ -273,7 +273,7 @@ const TimeTracker: React.FC = () => {
         <p className="text-sm text-gray-400 mb-2">{label}</p>
         <p className="text-lg font-semibold text-white">{value}</p>
       </div>
-    )
+    ),
   );
   StatCard.displayName = "StatCard";
 
@@ -290,7 +290,11 @@ const TimeTracker: React.FC = () => {
       <style jsx global>{`
         @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
         * {
-          font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+          font-family:
+            "Inter",
+            -apple-system,
+            BlinkMacSystemFont,
+            sans-serif;
         }
       `}</style>
       <div className="max-w-7xl mx-auto p-6">
@@ -324,7 +328,7 @@ const TimeTracker: React.FC = () => {
             icon={<Timer className="w-6 h-6 text-white" />}
             title={staticContent.timeBlockNames[timeData.currentTimeBlock - 1]}
             value={`${(3 - (timeData.timeBlock3HrPercentage / 100) * 3).toFixed(
-              2
+              2,
             )} Hrs`}
             percentage={timeData.timeBlock3HrPercentage}
             color="bg-amber-600"
@@ -419,13 +423,13 @@ const TimeTracker: React.FC = () => {
                 new Date(
                   new Date().getFullYear(),
                   new Date().getMonth() + 1,
-                  0
+                  0,
                 ).getDate() -
                 (timeData.monthPercentage / 100) *
                   new Date(
                     new Date().getFullYear(),
                     new Date().getMonth() + 1,
-                    0
+                    0,
                   ).getDate()
               ).toFixed(2)}
             />
@@ -440,7 +444,7 @@ const TimeTracker: React.FC = () => {
             <StatCard
               label="Years in century"
               value={(100 - (timeData.centuryPercentage / 100) * 100).toFixed(
-                2
+                2,
               )}
             />
             <StatCard
