@@ -31,9 +31,14 @@ interface TimeData {
   currentHourSession: number;
   timeBlock3HrPercentage: number;
   currentTimeBlock: number;
+  dhakaYear: number;
+  dhakaMonth: number;
+  quarterTotalDays: number;
+  monthName: string;
 }
 
-const BIRTH_DATE = new Date("1997-05-05");
+// Birth date as Dhaka midnight: 1997-05-05 00:00 BDT = 1997-05-04 18:00 UTC
+const BIRTH_DATE = new Date("1997-05-04T18:00:00.000Z");
 const LIFE_EXPECTANCY = 125;
 
 const TimeTracker: React.FC = () => {
@@ -41,120 +46,92 @@ const TimeTracker: React.FC = () => {
 
   const calculateTimeData = (): TimeData => {
     const now = new Date();
-    const dhakaTime = new Date(
-      now.toLocaleString("en-US", { timeZone: "Asia/Dhaka" }),
-    );
 
-    const hour = dhakaTime.getHours();
-    const minute = dhakaTime.getMinutes();
-    const seconds = dhakaTime.getSeconds();
-    const milliseconds = dhakaTime.getMilliseconds();
+    // ── Single source of truth: derive all Dhaka fields from UTC via offset ──
+    // Dhaka is UTC+6, no DST.
+    const DHAKA_OFFSET_MS = 6 * 60 * 60 * 1000;
+    // UTC ms representing the current Dhaka "wall clock" instant
+    const dhakaMs = now.getTime() + DHAKA_OFFSET_MS;
 
-    // Calculate total minutes and seconds from start of day
+    // Dhaka wall-clock components (work in UTC methods on shifted value)
+    const dhakaD = new Date(dhakaMs);
+    const hour = dhakaD.getUTCHours();
+    const minute = dhakaD.getUTCMinutes();
+    const seconds = dhakaD.getUTCSeconds();
+    const milliseconds = dhakaD.getUTCMilliseconds();
+    const dhakaYear = dhakaD.getUTCFullYear();
+    const dhakaMonth = dhakaD.getUTCMonth();   // 0-indexed
+    const dhakaDayOfWeekJS = dhakaD.getUTCDay(); // 0=Sun
+
+    // Helper: UTC epoch of Dhaka midnight for a given Dhaka calendar date
+    const dhakaMidnight = (y: number, m: number, d: number) =>
+      Date.UTC(y, m, d) - DHAKA_OFFSET_MS;
+
+    // ── Day percentage ──
+    const msIntoDay = hour * 3600000 + minute * 60000 + seconds * 1000 + milliseconds;
+    const dayPercentage = (msIntoDay / 86400000) * 100;
+
+    // ── Week percentage (Mon=0 … Sun=6) ──
+    const dayOfWeek = dhakaDayOfWeekJS === 0 ? 6 : dhakaDayOfWeekJS - 1;
+    const weekPercentage = ((dayOfWeek * 86400000 + msIntoDay) / (7 * 86400000)) * 100;
+
+    // ── 3-hour block & 1-hour session ──
     const totalMinutesInDay = hour * 60 + minute;
-
-    // 3-hour time block calculations (8 blocks per day)
     const minutesIn3Hr = 180;
     const currentTimeBlock = Math.floor(totalMinutesInDay / minutesIn3Hr) + 1;
-    const minutesIntoTimeBlock = totalMinutesInDay % minutesIn3Hr;
-    const secondsIntoTimeBlock = minutesIntoTimeBlock * 60 + seconds;
-    const timeBlock3HrPercentage =
-      (secondsIntoTimeBlock / (minutesIn3Hr * 60)) * 100;
+    const minutesIntoBlock = totalMinutesInDay % minutesIn3Hr;
+    const secondsIntoBlock = minutesIntoBlock * 60 + seconds + milliseconds / 1000;
+    const timeBlock3HrPercentage = (secondsIntoBlock / (minutesIn3Hr * 60)) * 100;
 
-    // 1-hour session calculations (3 sessions per 3-hour block)
-    const minutesIn1Hr = 60;
-    const currentHourSession =
-      Math.floor(minutesIntoTimeBlock / minutesIn1Hr) + 1;
-    const minutesIntoHourSession = minutesIntoTimeBlock % minutesIn1Hr;
-    const secondsIntoHourSession = minutesIntoHourSession * 60 + seconds;
-    const hourSessionPercentage =
-      (secondsIntoHourSession / (minutesIn1Hr * 60)) * 100;
+    const currentHourSession = Math.floor(minutesIntoBlock / 60) + 1;
+    const minutesIntoSession = minutesIntoBlock % 60;
+    const secondsIntoSession = minutesIntoSession * 60 + seconds + milliseconds / 1000;
+    const hourSessionPercentage = (secondsIntoSession / 3600) * 100;
 
-    // Continuous day percentage calculation
-    const totalMillisecondsInDay = 24 * 60 * 60 * 1000;
-    const currentMillisecondsInDay =
-      hour * 60 * 60 * 1000 +
-      minute * 60 * 1000 +
-      seconds * 1000 +
-      milliseconds;
-    const dayPercentage =
-      (currentMillisecondsInDay / totalMillisecondsInDay) * 100;
+    // ── Month percentage ──
+    const monthStartMs = dhakaMidnight(dhakaYear, dhakaMonth, 1);
+    const monthEndMs = dhakaMidnight(dhakaYear, dhakaMonth + 1, 1);
+    const monthPercentage = ((now.getTime() - monthStartMs) / (monthEndMs - monthStartMs)) * 100;
 
-    // Continuous week percentage calculation
-    const dayOfWeekJS = dhakaTime.getDay();
-    const dayOfWeek = dayOfWeekJS === 0 ? 6 : dayOfWeekJS - 1;
-    const totalMillisecondsInWeek = 7 * 24 * 60 * 60 * 1000;
-    const currentMillisecondsInWeek =
-      dayOfWeek * 24 * 60 * 60 * 1000 + currentMillisecondsInDay;
-    const weekPercentage =
-      (currentMillisecondsInWeek / totalMillisecondsInWeek) * 100;
+    // ── Quarter percentage ──
+    const quarter = Math.floor(dhakaMonth / 3) + 1;
+    const qStartMonth = (quarter - 1) * 3;
+    const quarterStartMs = dhakaMidnight(dhakaYear, qStartMonth, 1);
+    const quarterEndMs = dhakaMidnight(dhakaYear, qStartMonth + 3, 1);
+    const quarterTotalDays = (quarterEndMs - quarterStartMs) / 86400000;
+    const quarterPercentage = ((now.getTime() - quarterStartMs) / (quarterEndMs - quarterStartMs)) * 100;
 
-    // Continuous month percentage calculation
-    const monthStart = new Date(
-      dhakaTime.getFullYear(),
-      dhakaTime.getMonth(),
-      1,
+    // ── Year percentage ──
+    const yearStartMs = dhakaMidnight(dhakaYear, 0, 1);
+    const yearEndMs = dhakaMidnight(dhakaYear + 1, 0, 1);
+    const yearPercentage = ((now.getTime() - yearStartMs) / (yearEndMs - yearStartMs)) * 100;
+
+    // ── Century percentage (21st century: 2001-01-01 to 2101-01-01 Dhaka) ──
+    const centuryStartMs = dhakaMidnight(2001, 0, 1);
+    const centuryEndMs = dhakaMidnight(2101, 0, 1);
+    const centuryPercentage = Math.max(0, ((now.getTime() - centuryStartMs) / (centuryEndMs - centuryStartMs)) * 100);
+
+    // ── Age & life percentage ──
+    // Exact age: integer completed years + fraction of current year of life
+    const bY = BIRTH_DATE.getUTCFullYear();
+    const bMo = BIRTH_DATE.getUTCMonth();
+    const bD = BIRTH_DATE.getUTCDate();
+    const bH = BIRTH_DATE.getUTCHours();
+    let completedYears = dhakaYear - bY;
+    // This year's birthday in UTC
+    let thisYearBirthdayMs = Date.UTC(dhakaYear, bMo, bD, bH, 0, 0, 0);
+    if (now.getTime() < thisYearBirthdayMs) {
+      completedYears--;
+      thisYearBirthdayMs = Date.UTC(dhakaYear - 1, bMo, bD, bH, 0, 0, 0);
+    }
+    const nextBirthdayMs = Date.UTC(
+      new Date(thisYearBirthdayMs).getUTCFullYear() + 1, bMo, bD, bH, 0, 0, 0
     );
-    const monthEnd = new Date(
-      dhakaTime.getFullYear(),
-      dhakaTime.getMonth() + 1,
-      0,
-      23,
-      59,
-      59,
-      999,
-    );
-    const monthTotalMs = monthEnd.getTime() - monthStart.getTime();
-    const monthCurrentMs = dhakaTime.getTime() - monthStart.getTime();
-    const monthPercentage = (monthCurrentMs / monthTotalMs) * 100;
+    const ageInYears = completedYears + (now.getTime() - thisYearBirthdayMs) / (nextBirthdayMs - thisYearBirthdayMs);
+    const lifePercentage = (ageInYears / LIFE_EXPECTANCY) * 100;
 
-    // Continuous quarter percentage calculation
-    const month = dhakaTime.getMonth();
-    const quarter = Math.floor(month / 3) + 1;
-    const quarterStartMonth = (quarter - 1) * 3;
-    const quarterStartDate = new Date(
-      dhakaTime.getFullYear(),
-      quarterStartMonth,
-      1,
-    );
-    const quarterEndDate = new Date(
-      dhakaTime.getFullYear(),
-      quarterStartMonth + 3,
-      0,
-      23,
-      59,
-      59,
-      999,
-    );
-    const quarterTotalMs =
-      quarterEndDate.getTime() - quarterStartDate.getTime();
-    const quarterCurrentMs = dhakaTime.getTime() - quarterStartDate.getTime();
-    const quarterPercentage = (quarterCurrentMs / quarterTotalMs) * 100;
-
-    // Continuous year percentage calculation
-    const yearStart = new Date(dhakaTime.getFullYear(), 0, 1);
-    const yearEnd = new Date(dhakaTime.getFullYear() + 1, 0, 1);
-    const yearTotalMs = yearEnd.getTime() - yearStart.getTime();
-    const yearCurrentMs = dhakaTime.getTime() - yearStart.getTime();
-    const yearPercentage = (yearCurrentMs / yearTotalMs) * 100;
-
-    // Continuous century percentage calculation
-    const centuryStart = new Date(2001, 0, 1);
-    const centuryEnd = new Date(2101, 0, 1);
-    const centuryTotalMs = centuryEnd.getTime() - centuryStart.getTime();
-    const centuryCurrentMs = dhakaTime.getTime() - centuryStart.getTime();
-    const centuryPercentage = Math.max(
-      0,
-      (centuryCurrentMs / centuryTotalMs) * 100,
-    );
-
-    // Continuous age and life percentage calculation
-    const birthTime = BIRTH_DATE.getTime();
-    const currentTime = dhakaTime.getTime();
-    const ageInMs = currentTime - birthTime;
-    const ageInYears = ageInMs / (365.25 * 24 * 60 * 60 * 1000);
-    const age = ageInYears;
-    const lifePercentage = (age / LIFE_EXPECTANCY) * 100;
+    // ── Month name (Dhaka-synced, derived here not at render time) ──
+    const monthName = now.toLocaleString("en-US", { month: "long", timeZone: "Asia/Dhaka" });
 
     return {
       hour,
@@ -168,13 +145,10 @@ const TimeTracker: React.FC = () => {
       quarterPercentage,
       yearPercentage,
       centuryPercentage,
-      age,
+      age: ageInYears,
       lifePercentage,
-      currentTime: dhakaTime.toLocaleTimeString("en-US", {
-        timeZone: "Asia/Dhaka",
-        hour12: true,
-      }),
-      currentDate: dhakaTime.toLocaleDateString("en-US", {
+      currentTime: now.toLocaleTimeString("en-US", { timeZone: "Asia/Dhaka", hour12: true }),
+      currentDate: now.toLocaleDateString("en-US", {
         timeZone: "Asia/Dhaka",
         weekday: "long",
         year: "numeric",
@@ -185,6 +159,10 @@ const TimeTracker: React.FC = () => {
       currentHourSession,
       timeBlock3HrPercentage,
       currentTimeBlock,
+      dhakaYear,
+      dhakaMonth,
+      quarterTotalDays,
+      monthName,
     };
   };
 
@@ -359,10 +337,7 @@ const TimeTracker: React.FC = () => {
           <TimeCard
             icon={<Activity className="w-6 h-6 text-white" />}
             title="Month"
-            value={new Date().toLocaleString("en-US", {
-              month: "long",
-              timeZone: "Asia/Dhaka",
-            })}
+            value={timeData.monthName}
             percentage={timeData.monthPercentage}
             color="bg-emerald-600"
             subtitle="Month progress"
@@ -373,14 +348,14 @@ const TimeTracker: React.FC = () => {
             value={staticContent.quarterNames[timeData.quarter - 1]}
             percentage={timeData.quarterPercentage}
             color="bg-purple-600"
-            subtitle={new Date().getFullYear().toString()}
+            subtitle={timeData.dhakaYear.toString()}
           />
 
           {/* Row 3 */}
           <TimeCard
             icon={<Globe className="w-6 h-6 text-white" />}
             title="Year"
-            value={new Date().getFullYear().toString()}
+            value={timeData.dhakaYear.toString()}
             percentage={timeData.yearPercentage}
             color="bg-orange-600"
             subtitle="Year progress"
@@ -421,21 +396,25 @@ const TimeTracker: React.FC = () => {
               label="Days in month"
               value={(
                 new Date(
-                  new Date().getFullYear(),
-                  new Date().getMonth() + 1,
-                  0,
-                ).getDate() -
+                  Date.UTC(
+                    timeData.dhakaYear,
+                    timeData.dhakaMonth + 1,
+                    0,
+                  ),
+                ).getUTCDate() -
                 (timeData.monthPercentage / 100) *
                   new Date(
-                    new Date().getFullYear(),
-                    new Date().getMonth() + 1,
-                    0,
-                  ).getDate()
+                    Date.UTC(
+                      timeData.dhakaYear,
+                      timeData.dhakaMonth + 1,
+                      0,
+                    ),
+                  ).getUTCDate()
               ).toFixed(2)}
             />
             <StatCard
               label="Weeks in quarter"
-              value={(13 - (timeData.quarterPercentage / 100) * 13).toFixed(2)}
+              value={((1 - timeData.quarterPercentage / 100) * timeData.quarterTotalDays / 7).toFixed(2)}
             />
             <StatCard
               label="Qs this year"
